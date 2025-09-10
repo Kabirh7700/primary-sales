@@ -27,21 +27,25 @@ const normalizeFollowUpLog = (log: any): FollowUpLog => ({
     proofUrl: log['Proof URL'] || log.proofUrl || undefined,
 });
 
-// NEW: Fetches only the necessary data for the login screen, making it load instantly.
+// Fetches user lists for the login screen from the central user management system.
 export const fetchLoginData = async (): Promise<{ salesPersons: string[], interns: string[] }> => {
     try {
-        const url = new URL(API_URL);
-        url.searchParams.append('action', 'getLoginData');
+        const users = await fetchUsers();
         
-        const response = await fetch(url.toString());
-        if (!response.ok) {
-            throw new Error(`Network response was not ok: ${response.statusText}`);
+        const salesPersons: string[] = [];
+        const interns: string[] = [];
+
+        if (Array.isArray(users)) {
+            users.forEach(user => {
+                if (user.role === 'Sales Person') {
+                    salesPersons.push(user.name);
+                } else if (user.role === 'Intern') {
+                    interns.push(user.name);
+                }
+            });
         }
-        const result = await response.json();
-        if (result.status === 'error') {
-            throw new Error(result.message);
-        }
-        return result.data;
+
+        return { salesPersons: salesPersons.sort(), interns: interns.sort() };
     } catch (error) {
         console.error("Failed to fetch login data:", error);
         throw new Error("Could not load user lists. Please check the API endpoint and your network connection.");
