@@ -1,0 +1,5 @@
+{
+  "name": "Contact Data Viewer",
+  "description": "A web application to fetch and display contact data from a Google Sheet, providing a clean and searchable interface for viewing contact information.",
+  "requestFramePermissions": []
+}
