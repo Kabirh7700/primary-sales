@@ -1,6 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { ADMIN_USER } from '../constants';
 import { authenticateUser, fetchLoginData } from '../services/apiService';
+import { getCache, setCache } from '../services/cachingService';
+
+const LOGIN_DATA_CACHE_KEY = 'loginDataCache';
 
 interface LoginProps {
   onLogin: (user: string, role: 'salesPerson' | 'intern' | 'admin') => void;
@@ -33,15 +37,34 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   useEffect(() => {
     const loadLoginData = async () => {
-      setIsLoading(true);
+      // Step 1: Try to load from cache immediately for a fast UI response
+      const cachedData = getCache<{ salesPersons: string[], interns: string[] }>(LOGIN_DATA_CACHE_KEY);
+      if (cachedData) {
+        setSalesPersons(cachedData.salesPersons);
+        setInterns(cachedData.interns);
+        setIsLoading(false); // Render the form immediately with cached data
+      } else {
+        setIsLoading(true); // No cache, show the loader
+      }
+
+      // Step 2: Always fetch fresh data from the network to keep the cache updated
       setError(null);
       try {
-        const data = await fetchLoginData();
-        setSalesPersons(data.salesPersons);
-        setInterns(data.interns);
+        const freshData = await fetchLoginData();
+        setSalesPersons(freshData.salesPersons);
+        setInterns(freshData.interns);
+        // Step 3: Update the cache with the new data
+        setCache(LOGIN_DATA_CACHE_KEY, freshData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load user lists.');
+        // Only show a blocking error if there was no cached data to display initially
+        if (!cachedData) {
+          setError(err instanceof Error ? err.message : 'Failed to load user lists.');
+        } else {
+          // If cached data was shown, just log the background refresh error
+          console.error("Failed to refresh user list in the background:", err);
+        }
       } finally {
+        // Ensure the loader is turned off, even if the fetch fails
         setIsLoading(false);
       }
     };
