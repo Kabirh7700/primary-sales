@@ -19,9 +19,11 @@ import { DashboardIcon, AnalysisIcon, AdminIcon, ComparisonIcon, TeamIcon, Users
 import { ComparisonPanel } from './components/ComparisonPanel';
 import { TeamView } from './components/TeamView';
 import { UserManagementPanel } from './components/UserManagementPanel';
-
+import { getCache, setCache } from './services/cachingService';
 
 const SESSION_STORAGE_KEY = 'salesAppLoggedInUser';
+const INITIAL_DATA_CACHE_KEY = 'initialDataCache';
+
 
 type FollowUpData = {
     contact: Contact;
@@ -62,18 +64,38 @@ const App: React.FC = () => {
   const [primarySalesPerson, setPrimarySalesPerson] = useState<string | null>(null);
 
   const loadData = useCallback(async (showLoader = true) => {
+    const cachedData = getCache<{ contacts: Contact[], followUps: FollowUpLog[] }>(INITIAL_DATA_CACHE_KEY);
+
+    // If there's cached data, display it immediately and prevent the full-screen loader.
+    if (cachedData) {
+      setContacts(cachedData.contacts);
+      setFollowUps(cachedData.followUps);
+      showLoader = false; // Don't show the main loader as we already have data to display.
+    }
+
     if (showLoader) setIsLoading(true);
     setError(null);
+
     try {
+      // Always fetch fresh data from the network.
       const { contacts: fetchedContacts, followUps: fetchedFollowUps } = await fetchInitialData();
       setContacts(fetchedContacts);
       setFollowUps(fetchedFollowUps);
+      // Update the cache with the fresh data.
+      setCache(INITIAL_DATA_CACHE_KEY, { contacts: fetchedContacts, followUps: fetchedFollowUps });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      // Only show a blocking error if there was no cached data to begin with.
+      if (!cachedData) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      } else {
+        console.error("Failed to refresh data in the background:", err);
+        // Optionally, show a non-blocking toast notification here to inform the user.
+      }
     } finally {
       if (showLoader) setIsLoading(false);
     }
   }, []);
+
 
   useEffect(() => {
     if (loggedInUser) {
@@ -155,7 +177,6 @@ const App: React.FC = () => {
   const handleLogin = (user: string, role: LoggedInUserRole) => {
     setLoggedInUser(user);
     setLoggedInUserRole(role);
-    setIsLoading(true); // Show loader while main data loads
   };
   const handleLogout = () => {
       setLoggedInUser(null);
