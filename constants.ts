@@ -1,5 +1,5 @@
 
-export const API_URL = "https://script.google.com/macros/s/AKfycbxwdSrJaTGrRvDG6UC700FzPnZC6_Cxwc0t1Iql-d-3bdnJV1bFc6TCFh4SDTspj8E/exec";
+export const API_URL = "https://script.google.com/macros/s/AKfycbxrv0goAVQJkYiNBrDoay5nUjL1P3dBQlWVRlcLhZz1v2hn3nghBhGkv7sOboYPRUBfjg/exec";
 
 export const ADMIN_USER = "Admin";
 
